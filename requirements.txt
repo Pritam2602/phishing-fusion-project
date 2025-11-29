@@ -1,0 +1,14 @@
+torch
+torchaudio
+transformers
+datasets
+librosa
+soundfile
+scikit-learn
+accelerate
+sentencepiece
+tqdm
+joblib
+onnx
+onnxruntime
+TTS==0.17.6
