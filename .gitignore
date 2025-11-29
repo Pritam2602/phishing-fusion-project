@@ -1,0 +1,52 @@
+# Python / virtualenv
+venv/
+env/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs and outputs
+logs/
+outputs/
+
+# Data (keep this out of git; too large and often private)
+data/
+
+# Models - ignore large checkpoints, but keep minimal configs if needed
+models/**/pytorch_model.bin
+models/**/checkpoint.pt
+models/**/tf_model.h5
+models/**/audio_cnn_best.h5
+models/**/audio_cnn_final.h5
+
+# FastAPI / Uvicorn
+*.log
+
+# Node / React (frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.DS_Store
+
+# Environment / local config
+.env
+.env.local
+.env.*
+
+
