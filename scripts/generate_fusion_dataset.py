@@ -12,55 +12,45 @@ import torch.nn.functional as F
 import tensorflow as tf
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# =================================
-# CONFIG
-# =================================
+
 TEXT_MODEL_DIR = "models/text_distilroberta/best"
 AUDIO_MODEL_PATH = "models/audio_model/audio_cnn_best.h5"   # <-- TF audio model
 INPUT_CSV = "data/fusion/fusion.csv"
 OUTPUT_CSV = "data/fusion/fusion.csv"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"🔥 Using device: {device}")
+print(f"Using device: {device}")
 
-# =================================
-# LOAD MODELS
-# =================================
 
-# ---- TEXT MODEL (PyTorch) ----
-print("\n📥 Loading text model...")
+
+print("\n Loading text model...")
 tokenizer = AutoTokenizer.from_pretrained(TEXT_MODEL_DIR)
 text_model = AutoModelForSequenceClassification.from_pretrained(TEXT_MODEL_DIR).to(device)
 text_model.eval()
 
-# ---- AUDIO MODEL (TensorFlow) ----
-print("📥 Loading audio CNN model...")
+
+print(" Loading audio CNN model...")
 audio_model = tf.keras.models.load_model(AUDIO_MODEL_PATH)
 audio_model.trainable = False
 
 N_MELS = 64
 MEL_WIDTH = 256
 
-# =================================
-# INPUT CSV
-# =================================
-print(f"\n📄 Reading CSV: {INPUT_CSV}")
+
+print(f"\n Reading CSV: {INPUT_CSV}")
 df = pd.read_csv(INPUT_CSV)
 
 required_cols = ["audio", "text", "label"]
 for c in required_cols:
     if c not in df.columns:
-        raise ValueError(f"❌ Missing column '{c}' in {INPUT_CSV}")
+        raise ValueError(f" Missing column '{c}' in {INPUT_CSV}")
 
 df["label"] = df["label"].astype(str).str.lower().str.strip()
 label_map = {"benign": 0, "phishing": 1}
 df["label"] = df["label"].map(label_map)
 
-# =================================
-# PREDICT FUNCTIONS
-# =================================
 
-# ---- TEXT PROB ----
+
 @torch.no_grad()
 def get_text_prob(text):
     if pd.isna(text):
@@ -81,7 +71,7 @@ def get_text_prob(text):
 
 def get_audio_prob(path):
     if not os.path.exists(path):
-        print(f"⚠ Missing audio file: {path}, using default prob=0.5")
+        print(f"Missing audio file: {path}, using default prob=0.5")
         return 0.5
 
     mel = np.load(path).astype(np.float32)
@@ -110,11 +100,9 @@ def get_audio_prob(path):
 
 
 
-# =================================
-# PROCESS ROWS
-# =================================
 
-print("\n🚀 Generating text & audio probabilities...\n")
+
+print("\n Generating text & audio probabilities...\n")
 text_probs = []
 audio_probs = []
 
@@ -129,14 +117,11 @@ for i, row in df.iterrows():
 df["text_prob"] = text_probs
 df["audio_prob"] = audio_probs
 
-# =================================
-# SAVE CSV
-# =================================
 
 os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
 df.to_csv(OUTPUT_CSV, index=False)
 
-print(f"\n🎉 Fusion dataset created successfully!")
-print(f"📁 Saved to: {OUTPUT_CSV}")
+print(f"\nFusion dataset created successfully!")
+print(f" Saved to: {OUTPUT_CSV}")
 print("\nPreview:")
 print(df.head())

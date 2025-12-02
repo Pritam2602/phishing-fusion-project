@@ -23,9 +23,7 @@ import librosa
 import numpy as np
 import pandas as pd
 
-# -----------------------------
-# Input folders
-# -----------------------------
+
 RAW_BENIGN = "data/audio/benign_1000"
 RAW_PHISH  = "data/audio/phishing"
 
@@ -46,9 +44,7 @@ TOP_DB = 30
 MIN_VOICE_LEN = 0.5
 
 
-# -----------------------------
-# Audio utilities
-# -----------------------------
+
 def trim_silence(y, top_db=TOP_DB):
     y_trim, _ = librosa.effects.trim(y, top_db=top_db)
     return y_trim
@@ -88,9 +84,6 @@ def make_mel(y, sr=SR, n_mels=N_MELS):
     return mel_db
 
 
-# -----------------------------
-# Process one file
-# -----------------------------
 def process_file(path, label, uid):
     try:
         y, _ = librosa.load(path, sr=SR, mono=True)
@@ -113,13 +106,11 @@ def process_file(path, label, uid):
         return out_path
 
     except Exception as e:
-        print(f"❌ Error processing {path}: {e}")
+        print(f" Error processing {path}: {e}")
         return None
 
 
-# -----------------------------
-# Collect all WAVs from raw + augmented
-# -----------------------------
+
 def collect_paths():
     folders = [
         (RAW_BENIGN, "benign"),
@@ -141,13 +132,11 @@ def collect_paths():
     return all_items
 
 
-# -----------------------------
-# MAIN
-# -----------------------------
+
 def main():
-    print("\n🔍 Collecting WAV files...")
+    print("\n Collecting WAV files...")
     items = collect_paths()
-    print(f"📦 Total audio files found: {len(items)}\n")
+    print(f" Total audio files found: {len(items)}\n")
 
     rows = []
     seen = set()
@@ -168,9 +157,9 @@ def main():
     df = pd.DataFrame(rows, columns=["id", "path", "label"])
     df.to_csv(CSV_PATH, index=False)
 
-    print("\n✅ Preprocessing complete!")
-    print(f"📄 Saved dataset CSV: {CSV_PATH}")
-    print(f"📊 Total processed samples: {len(df)}")
+    print("\n Preprocessing complete!")
+    print(f" Saved dataset CSV: {CSV_PATH}")
+    print(f" Total processed samples: {len(df)}")
 
 
 if __name__ == "__main__":

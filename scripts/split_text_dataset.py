@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-# CHANGE THIS
+
 INPUT_CSV = "data/text_dataset.csv"
 OUTPUT_DIR = "data/text/"   # will create train.csv / val.csv / test.csv
 
@@ -12,8 +12,8 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 df = pd.read_csv(INPUT_CSV)
 
 # Required columns: ["text", "label"]
-assert "text" in df.columns, "❌ 'text' column missing"
-assert "label" in df.columns, "❌ 'label' column missing"
+assert "text" in df.columns, " 'text' column missing"
+assert "label" in df.columns, " 'label' column missing"
 
 # 80/10/10 split
 train_df, temp = train_test_split(df, test_size=0.2, stratify=df["label"], random_state=42)

@@ -6,9 +6,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc, precision_recall_curve
 
-# ───────────────────────────────────────────────
-# Parse minimal args
-# ───────────────────────────────────────────────
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--cpu", action="store_true", help="Force CPU only")
 parser.add_argument("--model", default="models/audio_cnn_best.h5", help="Path to trained model")
@@ -21,15 +19,11 @@ if args.cpu:
 
 os.makedirs(args.out_dir, exist_ok=True)
 
-# ───────────────────────────────────────────────
-# SAME CONSTANTS AS TRAINING
-# ───────────────────────────────────────────────
+
 N_MELS = 64
 MEL_WIDTH = 256
 
-# ───────────────────────────────────────────────
-# SAFE MEL LOADER (exact same as training)
-# ───────────────────────────────────────────────
+
 def load_mel(path):
     p = None
     try:
@@ -72,9 +66,7 @@ def tf_load_mel(path, label):
     return mel, label
 
 
-# ───────────────────────────────────────────────
-# Build tf.data Dataset
-# ───────────────────────────────────────────────
+
 def build_dataset(csv_path):
     df = pd.read_csv(csv_path)
     label_map = {"benign": 0, "phishing": 1}
@@ -85,18 +77,13 @@ def build_dataset(csv_path):
     return ds.batch(32).prefetch(tf.data.AUTOTUNE)
 
 
-# ───────────────────────────────────────────────
-# 🧠 LOAD MODEL + DATA
-# ───────────────────────────────────────────────
-print("\n📥 Loading model:", args.model)
+print("\nLoading model:", args.model)
 model = tf.keras.models.load_model(args.model)
 
 print("📥 Loading test dataset:", args.test_csv)
 test_ds = build_dataset(args.test_csv)
 
-# ───────────────────────────────────────────────
-# 🔮 RUN PREDICTIONS
-# ───────────────────────────────────────────────
+
 print("\n🔍 Running evaluation...")
 y_true = []
 y_pred_prob = []
@@ -110,12 +97,11 @@ y_true = np.array(y_true)
 y_pred_prob = np.array(y_pred_prob)
 y_pred = (y_pred_prob >= 0.5).astype(int)
 
-# ───────────────────────────────────────────────
-# 📊 CLASSIFICATION REPORT
-# ───────────────────────────────────────────────
+
+
 report = classification_report(y_true, y_pred, target_names=["benign", "phishing"])
 print("\n===============================")
-print("📊 CLASSIFICATION REPORT")
+print("CLASSIFICATION REPORT")
 print("===============================")
 print(report)
 
@@ -123,9 +109,7 @@ print(report)
 with open(os.path.join(args.out_dir, "classification_report.txt"), "w") as f:
     f.write(report)
 
-# ───────────────────────────────────────────────
-# 📉 CONFUSION MATRIX
-# ───────────────────────────────────────────────
+
 cm = confusion_matrix(y_true, y_pred)
 print("Confusion Matrix:\n", cm)
 
@@ -140,9 +124,7 @@ plt.yticks([0,1], ["Benign", "Phishing"])
 plt.savefig(os.path.join(args.out_dir, "confusion_matrix.png"))
 plt.close()
 
-# ───────────────────────────────────────────────
-# 📈 ROC + PR CURVES
-# ───────────────────────────────────────────────
+
 fpr, tpr, _ = roc_curve(y_true, y_pred_prob)
 roc_auc = auc(fpr, tpr)
 
@@ -155,7 +137,6 @@ plt.legend()
 plt.savefig(os.path.join(args.out_dir, "roc_curve.png"))
 plt.close()
 
-# Precision-Recall
 prec, rec, _ = precision_recall_curve(y_true, y_pred_prob)
 plt.figure()
 plt.plot(rec, prec)

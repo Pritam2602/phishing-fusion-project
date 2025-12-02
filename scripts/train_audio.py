@@ -1,7 +1,7 @@
 import argparse
 import os
 
-# Parse minimal CLI args early so we can control GPU visibility before TF imports
+
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("--cpu", action="store_true", help="Force CPU (sets CUDA_VISIBLE_DEVICES=-1)")
 parser.add_argument("--batch-size", type=int, default=8, help="Batch size")
@@ -15,14 +15,13 @@ args, _ = parser.parse_known_args()
 if args.cpu:
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-# keep TF less verbose by default
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-# Constants (can be overridden via args)
 N_MELS = 64
 MEL_WIDTH = 256
 BATCH_SIZE = args.batch_size
@@ -32,7 +31,7 @@ CSV_TRAIN = args.train_csv
 CSV_VAL = args.val_csv
 
 
-# =============== SAFE LOAD MEL ==================
+
 def load_mel(path):
     # `path` can be a tf.EagerTensor, bytes, or str depending on how tf passes it.
     # Safely extract a Python string path in all cases.
@@ -84,7 +83,6 @@ def tf_load_mel(path, label):
     return mel, label
 
 
-# =============== BUILD DATASET ==================
 def build_dataset(csv_path, shuffle=False):
     df = pd.read_csv(csv_path)
 
@@ -100,7 +98,7 @@ def build_dataset(csv_path, shuffle=False):
     return ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
 
-# =============== CNN MODEL ==================
+
 def build_cnn():
     inp = tf.keras.Input(shape=(N_MELS, MEL_WIDTH, 1))
     x = inp
@@ -131,9 +129,8 @@ def build_cnn():
     return model
 
 
-# =============== MAIN ==================
 def main():
-    print("\n📥 Loading datasets...")
+    print("\n Loading datasets...")
 
     # compute class weights from train CSV to help with imbalance
     train_df = pd.read_csv(CSV_TRAIN)
@@ -151,7 +148,7 @@ def main():
     train_ds = build_dataset(CSV_TRAIN, shuffle=True)
     val_ds = build_dataset(CSV_VAL)
 
-    print("\n🧠 Building CNN model...")
+    print("\n Building CNN model...")
     model = build_cnn()
     model.summary()
 
@@ -167,12 +164,12 @@ def main():
         tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
     ]
 
-    print("\n🚀 Training...\n")
+    print("\n Training...\n")
     history = model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=cb, class_weight=class_weight)
 
     # save final model
     model.save(args.final_out)
-    print(f"\n🎉 Training complete! Best model saved to: {args.model_out}, final model saved to: {args.final_out}")
+    print(f"\n Training complete! Best model saved to: {args.model_out}, final model saved to: {args.final_out}")
 
     # persist training history
     hist_df = pd.DataFrame(history.history)

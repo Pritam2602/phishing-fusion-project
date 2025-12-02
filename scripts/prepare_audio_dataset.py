@@ -85,13 +85,13 @@ def generate_mel(file_path, out_name):
         return out_path
 
     except Exception as e:
-        print(f"❌ Error processing {file_path}: {e}")
+        print(f" Error processing {file_path}: {e}")
         return None
 
 
 def process_folder(folder, label):
     rows = []
-    print(f"\n🔎 Processing {label} files...")
+    print(f"\n Processing {label} files...")
 
     for i, fname in enumerate(sorted(os.listdir(folder))):
         if not fname.endswith(".wav"):
@@ -109,7 +109,7 @@ def process_folder(folder, label):
 
 
 def main():
-    print("🚀 Starting ADVANCED audio preprocessing...")
+    print(" Starting ADVANCED audio preprocessing...")
 
     benign_rows = process_folder(BENIGN_DIR, "benign")
     phishing_rows = process_folder(PHISH_DIR, "phishing")
@@ -119,7 +119,7 @@ def main():
     df = pd.DataFrame(all_rows, columns=["id", "path", "label"])
     df.to_csv(CSV_PATH, index=False)
 
-    print("\n✅ Advanced preprocessing complete!")
+    print("\n Advanced preprocessing complete!")
     print("Processed files →", OUT_DIR)
     print("Dataset CSV →", CSV_PATH)
 

@@ -1,7 +1,6 @@
 import os
 import zipfile
 
-# New, updated dataset list (with active phishing SMS dataset)
 DATASETS = {
     # SMS datasets
     "uciml/sms-spam-collection-dataset": "sms_spam",
@@ -66,7 +65,7 @@ def download_and_extract():
                 z.extractall(target_path)
             os.remove(zip_path)
 
-    print("\n✨ ALL DATASETS DOWNLOADED & EXTRACTED ✨")
+    print("\nALL DATASETS DOWNLOADED & EXTRACTED ")
 
 
 if __name__ == "__main__":

@@ -1,17 +1,4 @@
-#!/usr/bin/env python3
-"""
-predict_text.py
 
-Usage examples:
-  # tune threshold from validation CSV and save threshold.json in model dir
-  python scripts/predict_text.py --model-dir models/text_distilroberta --tune --val-csv data/text/val.csv --min-precision 0.6
-
-  # predict single sentence
-  python scripts/predict_text.py --model-dir models/text_distilroberta --predict "Your order has been shipped"
-
-  # batch predict from csv (expects 'text' column), outputs csv with prob + label
-  python scripts/predict_text.py --model-dir models/text_distilroberta --predict-csv data/text/sample_input.csv --out-csv outputs/predictions.csv
-"""
 
 import argparse
 import json
@@ -27,7 +14,7 @@ from sklearn.metrics import precision_recall_fscore_support
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, logging as hf_logging
 hf_logging.set_verbosity_error()
 
-# ---------- args ----------
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model-dir", type=str, required=True, help="Directory where model + tokenizer live (from save_pretrained)")
 parser.add_argument("--device", type=str, default=None, help="cuda or cpu (auto if not provided)")
@@ -45,7 +32,6 @@ args = parser.parse_args()
 MODEL_DIR = Path(args.model_dir)
 TH_JSON = Path(args.threshold_path) if args.threshold_path else MODEL_DIR / "threshold.json"
 
-# ---------- device ----------
 if args.device:
     device = torch.device(args.device)
 else:
@@ -56,7 +42,7 @@ if args.verbose:
     print(f"Model dir: {MODEL_DIR}")
     print(f"Threshold file: {TH_JSON}")
 
-# ---------- helpers ----------
+
 def load_model_and_tokenizer(model_dir: Path):
     if not model_dir.exists():
         raise FileNotFoundError(f"Model dir not found: {model_dir}")
@@ -117,20 +103,18 @@ def best_threshold_from_probs(probs: np.ndarray, golds: np.ndarray, min_precisio
     for t in thresholds:
         preds = (probs >= t).astype(int)
         prec, rec, f1, _ = precision_recall_fscore_support(golds, preds, average="binary", zero_division=0)
-        # priority: maximize recall subject to precision >= min_precision
         if prec >= min_precision:
             if rec > best_rec or (rec == best_rec and f1 > best_f1):
                 best = t
                 best_rec = rec
                 best_f1 = f1
                 best_prec_for_rec = prec
-        # keep track of best f1 in case no threshold meets min_precision
         if f1 > best_f1 and best is None:
             best_f1 = f1
             alt_t = t
 
     if best is None:
-        # fallback: choose threshold maximizing f1
+        
         best = alt_t
         preds = (probs >= best).astype(int)
         prec, rec, f1, _ = precision_recall_fscore_support(golds, preds, average="binary", zero_division=0)
@@ -142,7 +126,7 @@ def best_threshold_from_probs(probs: np.ndarray, golds: np.ndarray, min_precisio
 if __name__ == "__main__":
     model, tokenizer = load_model_and_tokenizer(MODEL_DIR)
 
-    # if tuning requested: compute probs on val set and choose threshold
+    
     if args.tune:
         if not Path(args.val_csv).exists():
             raise FileNotFoundError(f"Validation CSV not found: {args.val_csv} (needs columns 'text' and 'label')")
@@ -159,7 +143,7 @@ if __name__ == "__main__":
         print("🏁 Tuning result:", {"threshold": best_t, **metrics})
         save_threshold(TH_JSON, float(best_t), metadata={"min_precision": args.min_precision, "step": args.step})
     else:
-        # try to load threshold if available, otherwise set default 0.5
+        
         if TH_JSON.exists():
             try:
                 loaded_t = load_threshold(TH_JSON)
@@ -172,19 +156,18 @@ if __name__ == "__main__":
             loaded_t = 0.5
         best_t = float(loaded_t)
 
-    # single predict
+    
     if args.predict:
         text = args.predict
         probs = predict_batch_texts(model, tokenizer, [text], batch_size=1)
         prob = float(probs[0])
         label = "phishing" if prob >= best_t else "benign"
-        print("\n🔍 Predicting single text...\n")
+        print("\nPredicting single text...\n")
         print(f"Text: {text}")
         print(f"Phishing probability: {prob:.4f}")
         print(f"Threshold used: {best_t:.4f}")
         print(f"Predicted label: {label}\n")
 
-    # batch predict csv
     if args.predict_csv:
         inpath = Path(args.predict_csv)
         if not inpath.exists():

@@ -1,10 +1,4 @@
-#!/usr/bin/env python
-"""
-train_text.py - Transformer classifier with Weighted Focal Loss, resume support,
-gradient accumulation, AMP, and threshold tuning.
 
-High-recall phishing optimization included.
-"""
 
 import os
 import argparse
@@ -27,7 +21,7 @@ from sklearn.metrics import classification_report, accuracy_score
 from tqdm import tqdm
 import numpy as np
 
-# ---------------- ARGS ------------------
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model_name", default="distilroberta-base")
 parser.add_argument("--epochs", type=int, default=5)
@@ -45,9 +39,8 @@ args = parser.parse_args()
 
 torch.manual_seed(args.seed)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"\n🔥 Using device: {DEVICE}\n")
+print(f"\n Using device: {DEVICE}\n")
 
-# ---------------- HELPER -----------------
 def ensure(path):
     os.makedirs(path, exist_ok=True)
 
@@ -66,7 +59,7 @@ def find_latest_epoch(base_dir):
     last = max(nums)
     return last, os.path.join(base_dir, f"epoch_{last}")
 
-# ---------------- LOAD DATA ----------------
+
 print("📥 Loading CSVs...")
 dataset = load_dataset("csv", data_files={
     "train": args.train_csv,
@@ -90,8 +83,7 @@ def clean_batch(batch):
 
 dataset = dataset.map(clean_batch, batched=True)
 
-# ---------------- TOKENIZER ----------------
-print("🔁 Tokenizing (batched)...")
+print(" Tokenizing (batched)...")
 
 tokenizer = AutoTokenizer.from_pretrained(args.model_name, use_fast=True)
 
@@ -109,7 +101,6 @@ dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels
 train_loader = DataLoader(dataset["train"], batch_size=args.batch, shuffle=True)
 val_loader = DataLoader(dataset["val"], batch_size=args.batch)
 
-# ---------------- FOCAL LOSS ----------------
 class WeightedFocalLoss(nn.Module):
     def __init__(self, alpha=5.0, gamma=2.0):
         super().__init__()
@@ -135,15 +126,15 @@ class WeightedFocalLoss(nn.Module):
 
 focal_loss = WeightedFocalLoss(alpha=args.weight_phishing, gamma=args.gamma)
 
-# ---------------- RESUME CHECK ----------------
+
 ensure(args.model_out)
 last_epoch, last_dir = find_latest_epoch(args.model_out)
 start_epoch = last_epoch + 1
-print(f"🔎 Latest checkpoint: epoch {last_epoch}")
-print(f"▶ Starting from epoch {start_epoch}")
+print(f" Latest checkpoint: epoch {last_epoch}")
+print(f" Starting from epoch {start_epoch}")
 
-# ---------------- MODEL & OPTIMIZER ----------------
-print("\n🧠 Loading model...")
+
+print("\n Loading model...")
 
 model = AutoModelForSequenceClassification.from_pretrained(
     args.model_name,
@@ -175,7 +166,6 @@ if last_dir:
 
         start_epoch = ckpt["epoch"] + 1
 
-# ---------------- TRAIN LOOP ----------------
 best_recall = 0.0
 
 for epoch in range(start_epoch, args.epochs + 1):
@@ -217,7 +207,7 @@ for epoch in range(start_epoch, args.epochs + 1):
         running_loss += float(loss.item() * args.accum)
         pbar.set_postfix(loss=f"{running_loss / (step + 1):.4f}")
 
-    # ---------------- VALIDATION ----------------
+
     model.eval()
     preds, golds, probs = [], [], []
 
@@ -235,10 +225,9 @@ for epoch in range(start_epoch, args.epochs + 1):
             golds.extend(labels.cpu())
 
     acc = accuracy_score(golds, preds)
-    print(f"\n📊 Epoch {epoch} Validation Accuracy: {acc:.4f}")
+    print(f"\n Epoch {epoch} Validation Accuracy: {acc:.4f}")
     print(classification_report(golds, preds, target_names=["benign", "phishing"]))
 
-    # ---------------- THRESHOLD TUNING ----------------
     best_threshold = 0.01
     best_recall_epoch = 0
 
@@ -249,7 +238,7 @@ for epoch in range(start_epoch, args.epochs + 1):
             best_recall_epoch = recall
             best_threshold = t
 
-    print(f"🎯 Best threshold={best_threshold:.3f}, recall={best_recall_epoch:.4f}")
+    print(f" Best threshold={best_threshold:.3f}, recall={best_recall_epoch:.4f}")
 
     # save if improved recall
     if best_recall_epoch > best_recall:
@@ -266,7 +255,7 @@ for epoch in range(start_epoch, args.epochs + 1):
             "scaler": scaler.state_dict() if DEVICE == "cuda" else None
         }
         torch.save(ckpt, os.path.join(best_dir, "checkpoint.pt"))
-        print("🏆 New best recall model saved.")
+        print(" New best recall model saved.")
 
     # save epoch checkpoint
     epoch_dir = os.path.join(args.model_out, f"epoch_{epoch}")
@@ -290,4 +279,4 @@ final_dir = os.path.join(args.model_out, "final")
 ensure(final_dir)
 model.save_pretrained(final_dir)
 tokenizer.save_pretrained(final_dir)
-print(f"\n🎉 Training complete. Final saved to {final_dir}")
+print(f"\n Training complete. Final saved to {final_dir}")

@@ -3,18 +3,14 @@ import pandas as pd
 import re
 import chardet
 
-# -----------------------------
-# PATHS
-# -----------------------------
+
 ENRON_PATH = "data/kaggle_datasets/enron_email/emails.csv"
 SMS_SPAM_PATH = "data/kaggle_datasets/sms_spam/spam.csv"
 CHATGPT_DIR = "data/chatgpt_dataset"
 
 OUT_CSV = "data/text_dataset.csv"
 
-# -----------------------------
-# CLEANING FUNCTION
-# -----------------------------
+
 def clean(text):
     if not isinstance(text, str):
         return ""
@@ -25,9 +21,6 @@ def clean(text):
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
-# -----------------------------
-# SAFE CSV READER (NO ERRORS ARG)
-# -----------------------------
 def safe_read_csv(path):
     print(f"\n📄 Reading CSV safely: {path}")
 
@@ -46,31 +39,25 @@ def safe_read_csv(path):
     print(f"🔍 Detected encoding: {encoding}")
 
     # Load using detected encoding
-    df = pd.read_csv(path, encoding=encoding)   # <-- FIXED: removed errors="ignore"
+    df = pd.read_csv(path, encoding=encoding)   
     print(f"✔ Loaded using {encoding}")
 
     return df
 
-# -----------------------------
-# COLLECT TEXT SAMPLES
-# -----------------------------
+
 rows = []
 
-# -----------------------------
-# 1) Enron Emails (benign)
-# -----------------------------
+
 if os.path.exists(ENRON_PATH):
-    print("\n📥 Loading Enron Emails...")
+    print("\n Loading Enron Emails...")
     df_enron = safe_read_csv(ENRON_PATH)
     text_col = "text" if "text" in df_enron.columns else df_enron.columns[-1]
     for text in df_enron[text_col]:
         rows.append([clean(text), "benign"])
 
-# -----------------------------
-# 2) SMS Spam Dataset (spam = phishing)
-# -----------------------------
+
 if os.path.exists(SMS_SPAM_PATH):
-    print("\n📥 Loading SMS Spam Dataset...")
+    print("\n Loading SMS Spam Dataset...")
     df_sms = safe_read_csv(SMS_SPAM_PATH)
 
     # Your file uses v1 for label and v2 for text
@@ -87,23 +74,18 @@ if os.path.exists(SMS_SPAM_PATH):
             rows.append([text, "benign"])
 
 
-# -----------------------------
-# 3) ChatGPT Dataset
-# -----------------------------
-print("\n📥 Loading ChatGPT Dataset...")
+
+print("\n Loading ChatGPT Dataset...")
 for fname in os.listdir(CHATGPT_DIR):
     if fname.endswith(".txt"):
         label = "phishing" if "phish" in fname.lower() else "benign"
         with open(os.path.join(CHATGPT_DIR, fname), "r", encoding="utf-8") as f:
             rows.append([clean(f.read()), label])
 
-# -----------------------------
-# SAVE FINAL CSV
-# -----------------------------
 df_out = pd.DataFrame(rows, columns=["text", "label"])
 df_out.to_csv(OUT_CSV, index=False)
 
-print("\n✅ Text dataset created successfully!")
-print("📌 Saved to:", OUT_CSV)
-print("📊 Total samples:", len(df_out))
+print("\n Text dataset created successfully!")
+print(" Saved to:", OUT_CSV)
+print(" Total samples:", len(df_out))
 print(df_out["label"].value_counts())
