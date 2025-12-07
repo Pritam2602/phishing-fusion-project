@@ -10,6 +10,11 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState(null);
 
+  // CONTEXT STATE
+  const [senderId, setSenderId] = useState("");
+  const [isShortCode, setIsShortCode] = useState(false);
+  const [hasUrl, setHasUrl] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -76,6 +81,11 @@ export default function App() {
     let url = "";
 
     // Recorded audio -> predict_recorded (we send recorded blob as audio_wav)
+    // Add Context params
+    formData.append("sender_id", senderId);
+    formData.append("is_short_code", isShortCode);
+    formData.append("has_url", hasUrl);
+
     if (useRecording && recordedBlob) {
       // name extension based on mime type: audio/webm etc
       const ext = (recordedBlob.type && recordedBlob.type.split("/")[1]) || "webm";
@@ -136,6 +146,40 @@ export default function App() {
               rows={4}
             />
           </label>
+
+          {/* CONTEXT INPUTS */}
+          <div className="field-group">
+            <label className="field">
+              <span>Sender ID (Optional)</span>
+              <input
+                type="text"
+                value={senderId}
+                onChange={(e) => setSenderId(e.target.value)}
+                placeholder="e.g. VM-HDFCBK or +9198..."
+                style={{ padding: "0.6rem", borderRadius: 6, border: "1px solid #444", background: "rgba(255,255,255,0.05)", color: "#fff" }}
+              />
+            </label>
+
+            <div className="checkbox-row" style={{ display: "flex", gap: "1.5rem", marginTop: "0.5rem" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={isShortCode}
+                  onChange={(e) => setIsShortCode(e.target.checked)}
+                />
+                Is Short Code?
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={hasUrl}
+                  onChange={(e) => setHasUrl(e.target.checked)}
+                />
+                Contains URL?
+              </label>
+            </div>
+          </div>
 
           {/* TRANSCRIPTION DISPLAY */}
           {result && result.transcription && (
@@ -199,6 +243,13 @@ export default function App() {
             <p><strong>Fusion Probability:</strong> {(result.fusion_prob * 100).toFixed(2)}%</p>
             <p><strong>Text Probability:</strong> {(result.text_prob * 100).toFixed(2)}%</p>
             <p><strong>Audio Probability:</strong> {(result.audio_prob * 100).toFixed(2)}%</p>
+            {/* NEW CONTEXT RESULTS */}
+            {result.sender_reputation !== undefined && (
+              <p><strong>Sender Reputation:</strong> {(result.sender_reputation * 100).toFixed(1)}%</p>
+            )}
+            {result.url_risk !== undefined && (
+              <p><strong>URL Risk:</strong> {(result.url_risk * 100).toFixed(1)}%</p>
+            )}
             <p><strong>Threshold Used:</strong> {result.threshold.toFixed(4)}</p>
           </div>
         )}
