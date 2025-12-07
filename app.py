@@ -169,11 +169,18 @@ def audio_prob(audio_model, mel: np.ndarray) -> float:
     return float(preds.flatten()[0])
 
 def fusion_prob(fusion_model, text_p: float, audio_p: float) -> float:
+    # Original model-based fusion
     features = np.array([[text_p, audio_p]], dtype=np.float32)
     with torch.no_grad():
         batch = torch.from_numpy(features).to(device)
         pred = fusion_model(batch)
-        return float(pred.cpu().numpy()[0])
+        model_out = float(pred.cpu().numpy()[0])
+    return model_out
+
+# ---------------------------
+# HEURISTIC CONTEXT HELPERS
+# ---------------------------
+from context_utils import calculate_sender_reputation, calculate_url_risk, weighted_fusion
 
 # ---------------------------
 # FFmpeg conversion utility
@@ -249,6 +256,9 @@ class PredictResponse(BaseModel):
     threshold: float
     label: str
     transcription: Optional[str] = None
+    # Context metadata details
+    sender_reputation: float
+    url_risk: float
 
 app = FastAPI(title="Phishing Fusion API with STT", version="1.0.0")
 
@@ -306,6 +316,9 @@ def startup_event():
 async def predict(
     text: Optional[str] = Form(None),
     audio_file: Optional[UploadFile] = File(None),
+    sender_id: Optional[str] = Form(None),
+    is_short_code: bool = Form(False),
+    has_url: bool = Form(False),
 ):
     has_text = bool(text and text.strip())
     has_audio = audio_file is not None
@@ -335,22 +348,38 @@ async def predict(
         else:
             a_prob_val = 0.0
 
+    # 1. Content Probability (Text + Audio) from trained model
+    t_val = float(t_prob_val) if t_prob_val is not None else 0.0
+    a_val = float(a_prob_val) if a_prob_val is not None else 0.0
+    
     if t_prob_val is not None and a_prob_val is not None:
-        f_prob_val = fusion_prob(FUSION_MODEL, t_prob_val, a_prob_val) if FUSION_MODEL is not None else max(t_prob_val, a_prob_val)
+        content_prob = fusion_prob(FUSION_MODEL, t_val, a_val) if FUSION_MODEL is not None else max(t_val, a_val)
     elif t_prob_val is not None:
-        f_prob_val = t_prob_val
+        content_prob = t_val
     else:
-        f_prob_val = a_prob_val
+        content_prob = a_val
 
-    label = "phishing" if f_prob_val >= THRESHOLD else "benign"
+    # 2. Context Calculation
+    sender_reputation = calculate_sender_reputation(sender_id, is_short_code)
+    url_risk = calculate_url_risk(has_url)
+    
+    # 3. Weighted Fusion
+    final_risk_score = weighted_fusion(t_val, a_val, sender_reputation, url_risk)
+    
+    # Override logic: If trained model is VERY sure it's phishing (e.g. > 0.9), we heavily weigh that,
+    # unless sender is explicitly trusted.
+    
+    label = "phishing" if final_risk_score >= THRESHOLD else "benign"
 
     return PredictResponse(
-        text_prob=float(t_prob_val) if t_prob_val is not None else 0.0,
-        audio_prob=float(a_prob_val) if a_prob_val is not None else 0.0,
-        fusion_prob=float(f_prob_val),
+        text_prob=t_val,
+        audio_prob=a_val,
+        fusion_prob=final_risk_score,
         threshold=float(THRESHOLD),
         label=label,
         transcription=None,
+        sender_reputation=sender_reputation,
+        url_risk=url_risk,
     )
 
 # ---------------------------
@@ -360,6 +389,9 @@ async def predict(
 async def predict_recorded(
     text: Optional[str] = Form(None),
     audio_wav: UploadFile = File(...),
+    sender_id: Optional[str] = Form(None),
+    is_short_code: bool = Form(False),
+    has_url: bool = Form(False),
 ):
     """
     Accepts recorded audio from browser (webm/ogg/mp3/wav...) and optional text.
@@ -404,23 +436,35 @@ async def predict_recorded(
     # audio probability
     a_prob_val = audio_prob(AUDIO_MODEL, mel) if AUDIO_MODEL is not None else 0.0
 
-    # fusion
+    # Content Probability
+    t_val = float(t_prob_val) if t_prob_val is not None else 0.0
+    a_val = float(a_prob_val) if a_prob_val is not None else 0.0
+    
     if t_prob_val is not None and FUSION_MODEL is not None:
-        f_prob_val = fusion_prob(FUSION_MODEL, t_prob_val, a_prob_val)
+        content_prob = fusion_prob(FUSION_MODEL, t_val, a_val)
     elif t_prob_val is not None:
-        f_prob_val = t_prob_val
+        content_prob = t_val
     else:
-        f_prob_val = a_prob_val
+        content_prob = a_val
 
-    label = "phishing" if f_prob_val >= THRESHOLD else "benign"
+    # Context Calc
+    sender_reputation = calculate_sender_reputation(sender_id, is_short_code)
+    url_risk = calculate_url_risk(has_url)
+    
+    # Weighted Fusion
+    final_risk_score = weighted_fusion(t_val, a_val, sender_reputation, url_risk)
+
+    label = "phishing" if final_risk_score >= THRESHOLD else "benign"
 
     return PredictResponse(
-        text_prob=float(t_prob_val) if t_prob_val is not None else 0.0,
-        audio_prob=float(a_prob_val),
-        fusion_prob=float(f_prob_val),
+        text_prob=t_val,
+        audio_prob=a_val,
+        fusion_prob=final_risk_score,
         threshold=float(THRESHOLD),
         label=label,
         transcription=transcription_text or None,
+        sender_reputation=sender_reputation,
+        url_risk=url_risk,
     )
 
 @app.get("/health")
